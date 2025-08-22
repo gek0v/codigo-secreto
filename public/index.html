@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Código Secreto Online</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🕵️ Código Secreto</h1>
+
+        <!-- Pantalla de inicio -->
+        <div id="homeScreen" class="screen active">
+            <div class="card">
+                <h2>Bienvenido al Código Secreto</h2>
+                <div class="role-buttons">
+                    <button onclick="showCreateGame()">Crear Partida</button>
+                    <button onclick="showJoinGame()">Unirse a Partida</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pantalla crear partida -->
+        <div id="createScreen" class="screen">
+            <div class="card">
+                <h2>Crear Nueva Partida</h2>
+                <div class="form-group">
+                    <label for="hostName">Tu nombre:</label>
+                    <input type="text" id="hostName" placeholder="Ingresa tu nombre">
+                </div>
+                <div class="form-group">
+                    <label for="hostRole">Tu rol:</label>
+                    <select id="hostRole">
+                        <option value="spymaster">Jefe Espía (ver tablero completo)</option>
+                        <option value="player">Jugador (interactuar con cartas)</option>
+                    </select>
+                </div>
+                <button onclick="createGame()">Crear Partida</button>
+                <button onclick="showHome()" style="background: #6c757d; margin-top: 10px;">Volver</button>
+            </div>
+        </div>
+
+        <!-- Pantalla unirse -->
+        <div id="joinScreen" class="screen">
+            <div class="card">
+                <h2>Unirse a Partida</h2>
+                <div class="form-group">
+                    <label for="gameCode">Código de partida:</label>
+                    <input type="text" id="gameCode" placeholder="Ej: ABC123" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="playerName">Tu nombre:</label>
+                    <input type="text" id="playerName" placeholder="Ingresa tu nombre">
+                </div>
+                <div class="form-group">
+                    <label for="playerRole">Tu rol:</label>
+                    <select id="playerRole">
+                        <option value="spymaster">Jefe Espía (ver tablero completo)</option>
+                        <option value="player">Jugador (interactuar con cartas)</option>
+                    </select>
+                </div>
+                <button onclick="joinGame()">Unirse</button>
+                <button onclick="showHome()" style="background: #6c757d; margin-top: 10px;">Volver</button>
+            </div>
+        </div>
+
+        <!-- Pantalla de juego -->
+        <div id="gameScreen" class="screen">
+            <div class="game-info">
+                <div class="game-code" id="displayGameCode"></div>
+                <div class="current-team" id="currentTeam">Turno del equipo ROJO</div>
+                <div id="gameStatus">Esperando jugadores...</div>
+                <button id="startButton" onclick="startGame()" style="display: none; margin-top: 15px;">Iniciar Partida</button>
+            </div>
+            
+            <div class="game-board" id="gameBoard">
+                <!-- Las cartas se generarán dinámicamente -->
+            </div>
+            
+            <div class="card" style="text-align: center;"><button id="endTurnButton" onclick="endTurn()" class="end-turn-btn">Terminar Turno</button>
+                
+                <button onclick="leaveGame()" style="background: #dc3545;">Abandonar Partida</button>
+            </div>
+        </div>
+
+        <div id="statusMessage"></div>
+    </div>
+
+    <script>
+        // Lista de palabras por defecto (puedes modificar esta lista)
+        const DEFAULT_WORDS = JSON.parse("../src/palabras.json")
+
+        let socket = null;
+        let currentGame = null;
+        let playerRole = null;
+
+        function initSocket() {
+            socket = io();
+            
+            socket.on('connect', () => {
+                console.log('Conectado al servidor');
+            });
+
+            socket.on('game-created', (data) => {
+                if (data.success) {
+                    showStatus('Partida creada exitosamente', 'success');
+                    document.getElementById('displayGameCode').textContent = data.gameCode;
+                    currentGame = data.gameCode;
+                    showScreen('gameScreen');
+                    document.getElementById('startButton').style.display = 'block';
+                }
+            });
+
+            socket.on('game-joined', (data) => {
+                currentGame = data.gameCode;
+                playerRole = data.role;
+                document.getElementById('displayGameCode').textContent = data.gameCode;
+                updateGameBoard(data.board);
+                updateGameInfo(data.currentTeam, data.gameState);
+                showScreen('gameScreen');
+                showStatus('Te has unido a la partida', 'success');
+            });
+
+            socket.on('join-error', (data) => {
+                showStatus(data.message, 'error');
+            });
+
+            socket.on('game-started', (data) => {
+                updateGameInfo(data.currentTeam, 'playing');
+                document.getElementById('startButton').style.display = 'none';
+                showStatus('¡La partida ha comenzado!', 'success');
+            });
+
+            socket.on('game-updated', (data) => {
+                updateGameBoard(data.board);
+                updateGameInfo(data.currentTeam, data.gameState, data.winner);
+            });
+
+            socket.on('player-joined', (data) => {
+                showStatus(`${data.playerName} se ha unido como ${data.role}`, 'success');
+            });
+
+            socket.on('player-left', (data) => {
+                showStatus(`${data.playerName} ha abandonado la partida`, 'error');
+            });
+
+            socket.on('end-turn', (data) => {
+                updateGameInfo(data.currentTeam, 'playing');
+                showStatus(`Turno cambiado al equipo ${data.currentTeam.toUpperCase()}`, 'success');
+            });
+
+            socket.on('disconnect', () => {
+                showStatus('Desconectado del servidor', 'error');
+            });
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showHome() {
+            showScreen('homeScreen');
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+            currentGame = null;
+            playerRole = null;
+        }
+
+        function showCreateGame() {
+            showScreen('createScreen');
+        }
+
+        function showJoinGame() {
+            showScreen('joinScreen');
+        }
+
+        function createGame() {
+            const hostName = document.getElementById('hostName').value.trim();
+            const hostRole = document.getElementById('hostRole').value;
+            
+            if (!hostName) {
+                showStatus('Por favor ingresa tu nombre', 'error');
+                return;
+            }
+
+            if (!socket) {
+                initSocket();
+                socket.on('connect', () => {
+                    socket.emit('create-game', { wordList: DEFAULT_WORDS });
+                    // Después de crear, automáticamente unirse
+                    setTimeout(() => {
+                        socket.emit('join-game', {
+                            gameCode: currentGame,
+                            playerName: hostName,
+                            role: hostRole
+                        });
+                    }, 100);
+                });
+            }
+        }
+
+        function joinGame() {
+            const gameCode = document.getElementById('gameCode').value.trim().toUpperCase();
+            const playerName = document.getElementById('playerName').value.trim();
+            const role = document.getElementById('playerRole').value;
+            
+            if (!gameCode || !playerName) {
+                showStatus('Por favor completa todos los campos', 'error');
+                return;
+            }
+
+            if (!socket) {
+                initSocket();
+            }
+
+            socket.emit('join-game', {
+                gameCode: gameCode,
+                playerName: playerName,
+                role: role
+            });
+        }
+
+        function startGame() {
+            if (socket && currentGame) {
+                socket.emit('start-game', { gameCode: currentGame });
+            }
+        }
+
+        function endTurn() {
+            if (socket && currentGame) {
+                socket.emit('end-turn', { gameCode: currentGame });
+                // Deshabilitar el botón temporalmente para evitar múltiples clics
+                const endTurnButton = document.getElementById('endTurnButton');
+                if (endTurnButton) {
+                    endTurnButton.disabled = true;
+                    // Volver a habilitar después de 2 segundos
+                    setTimeout(() => {
+                        endTurnButton.disabled = false;
+                    }, 2000);
+                }
+            }
+        }
+
+        function selectCard(cardIndex) {
+            if (socket && currentGame && playerRole === 'player') {
+                socket.emit('select-card', {
+                    gameCode: currentGame,
+                    cardIndex: cardIndex
+                });
+            }
+        }
+
+        function updateGameBoard(board) {
+            const gameBoard = document.getElementById('gameBoard');
+            gameBoard.innerHTML = '';
+            
+            board.forEach((card, index) => {
+                const cardElement = document.createElement('div');
+                cardElement.className = `card-cell ${card.color}`;
+                cardElement.textContent = card.word;
+                
+                if (card.revealed) {
+                    cardElement.classList.add('revealed');
+                } else if (playerRole === 'player') {
+                    cardElement.addEventListener('click', () => selectCard(index));
+                }
+                
+                gameBoard.appendChild(cardElement);
+            });
+        }
+
+        function updateGameInfo(currentTeam, gameState, winner = null) {
+            const teamElement = document.getElementById('currentTeam');
+            const statusElement = document.getElementById('gameStatus');
+            const endTurnButton = document.getElementById('endTurnButton');
+            
+            // Actualizar el indicador de turno
+            teamElement.className = `current-team team-${currentTeam}`;
+            teamElement.textContent = `TURNO: EQUIPO ${currentTeam.toUpperCase()}`;
+            
+            // Actualizar el botón de terminar turno
+            if (endTurnButton) {
+                endTurnButton.className = `end-turn-btn ${currentTeam}-turn`;
+                endTurnButton.textContent = `Terminar Turno (${currentTeam.toUpperCase()})`;
+                // Mostrar el botón a ambos roles cuando el juego está en curso
+                if (gameState === 'playing') {
+                    endTurnButton.style.display = 'inline-block';
+                } else {
+                    endTurnButton.style.display = 'none';
+                }
+            }
+            
+            // Actualizar estado del juego
+            if (gameState === 'waiting') {
+                statusElement.textContent = '🕒 Esperando que el anfitrión inicie la partida...';
+            } else if (gameState === 'playing') {
+                statusElement.textContent = '🎮 Partida en curso';
+            } else if (gameState === 'finished') {
+                statusElement.textContent = `🏆 ¡Partida terminada! Ganador: ${winner.toUpperCase()} 🏆`;
+                teamElement.textContent = `¡EQUIPO ${winner.toUpperCase()} GANA!`;
+                teamElement.className = `current-team team-${winner} winner`;
+            }
+        }
+
+        function leaveGame() {
+            if (confirm('¿Estás seguro que quieres abandonar la partida?')) {
+                showHome();
+            }
+        }
+
+        function showStatus(message, type) {
+            const statusElement = document.getElementById('statusMessage');
+            statusElement.className = `status-message status-${type}`;
+            statusElement.textContent = message;
+            statusElement.style.display = 'block';
+            
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+            }, 5000);
+        }
+
+        // Inicializar cuando la página cargue
+        document.addEventListener('DOMContentLoaded', function() {
+            // Convertir códigos a mayúsculas automáticamente
+            document.getElementById('gameCode').addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase();
+            });
+        });
+    </script>
+</body>
+</html>

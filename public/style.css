@@ -1,0 +1,306 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.card {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    margin-bottom: 20px;
+}
+
+h1 {
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+    font-size: 2.5em;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #555;
+}
+
+input, select, button {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+input:focus, select:focus {
+    border-color: #667eea;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+button {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.game-board {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.card-cell {
+    aspect-ratio: 8/5;
+    border: 3px solid #ddd;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: 900;
+    font-size: 18px;
+    text-align: center;
+    transition: all 0.3s ease;
+    padding: 8px;
+    background: white;
+}
+
+.card-cell:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+.card-cell.red {
+    background-color: #ff6b6b;
+    color: white;
+    border-color: #e55555;
+}
+
+.card-cell.blue {
+    background-color: #4ecdc4;
+    color: white;
+    border-color: #3bb8b0;
+}
+
+.card-cell.neutral {
+    background-color: #f7f3e9;
+    color: #333;
+    border-color: #d4c5a9;
+}
+
+.card-cell.assassin {
+    background-color: #2c3e50;
+    color: white;
+    border-color: #1a252f;
+}
+
+.card-cell.hidden {
+    background-color: #ecf0f1;
+    color: #333;
+    border-color: #bdc3c7;
+}
+
+.card-cell.revealed {
+    opacity: 0.8;
+    cursor: default;
+}
+
+.card-cell.revealed:hover {
+    transform: none;
+}
+
+.game-info {
+    text-align: center;
+    margin: 20px 0;
+    padding: 20px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    color: white;
+}
+
+/* Estilos para el indicador de turno */
+.current-team {
+    text-align: center;
+    font-size: 1.5em;
+    font-weight: bold;
+    margin: 15px 0;
+    padding: 15px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    max-width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.team-red {
+    background-color: rgba(220, 53, 69, 0.2);
+    color: #dc3545;
+    border: 2px solid #dc3545;
+}
+
+.team-blue {
+    background-color: rgba(13, 110, 253, 0.2);
+    color: #0d6efd;
+    border: 2px solid #0d6efd;
+}
+
+.team-red.winner, .team-blue.winner {
+    font-size: 2em;
+    padding: 20px;
+    animation: pulse 1.5s infinite;
+    max-width: 90%;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+/* Estilos para el botón de terminar turno */
+.end-turn-btn {
+    margin: 10px 5px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    padding: 12px 25px;
+    font-size: 1.1em;
+    border-radius: 8px;
+}
+
+.red-turn {
+    background: linear-gradient(135deg, #dc3545 0%, #a71d2a 100%);
+    border: 2px solid #dc3545;
+}
+
+.blue-turn {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    border: 2px solid #0d6efd;
+}
+
+.end-turn-btn:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+}
+
+/* Estilo para el estado del juego */
+#gameStatus {
+    text-align: center;
+    font-size: 1.2em;
+    margin: 15px 0 25px;
+    font-weight: 500;
+    color: #f8f9fa;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+}
+
+.screen {
+    display: none;
+}
+
+.screen.active {
+    display: block;
+}
+
+.role-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.status-message {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    text-align: center;
+    font-weight: 600;
+}
+
+.status-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.game-code {
+    font-size: 2em;
+    font-weight: bold;
+    text-align: center;
+    color: #667eea;
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    letter-spacing: 3px;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .card {
+        padding: 20px;
+    }
+    
+    .game-board {
+        gap: 5px;
+    }
+    
+    .card-cell {
+        font-size: 12px;
+        padding: 4px;
+    }
+    
+    h1 {
+        font-size: 2em;
+    }
+}
