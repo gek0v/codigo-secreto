@@ -2,6 +2,10 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+const palabras = require('./palabras.json');
+
+const dotenv = require('dotenv');
+dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -21,6 +25,11 @@ const games = new Map();
 // Generar código de partida aleatorio
 function generateGameCode() {
   return Math.random().toString(36).substr(2, 6).toUpperCase();
+}
+
+function generateWordList() {
+  const shuffled = [...palabras.palabras].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 25);
 }
 
 // Crear tablero 5x5 con palabras aleatorias
@@ -45,10 +54,10 @@ function createBoard(wordList) {
 }
 
 // Estructura de una partida
-function createGame(gameCode, wordList) {
+function createGame(gameCode) {
   return {
     code: gameCode,
-    board: createBoard(wordList),
+    board: createBoard(generateWordList()),
     players: new Map(),
     currentTeam: 'red', // 'red' o 'blue'
     gameState: 'waiting', // 'waiting', 'playing', 'finished'
@@ -63,7 +72,7 @@ io.on('connection', (socket) => {
   // Crear nueva partida
   socket.on('create-game', (data) => {
     const gameCode = generateGameCode();
-    const game = createGame(gameCode, data.wordList || []);
+    const game = createGame(gameCode);
     games.set(gameCode, game);
     
     socket.join(gameCode);

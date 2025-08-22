@@ -89,9 +89,6 @@
     </div>
 
     <script>
-        // Lista de palabras por defecto (puedes modificar esta lista)
-        const DEFAULT_WORDS = JSON.parse("../src/palabras.json")
-
         let socket = null;
         let currentGame = null;
         let playerRole = null;
@@ -193,7 +190,7 @@
             if (!socket) {
                 initSocket();
                 socket.on('connect', () => {
-                    socket.emit('create-game', { wordList: DEFAULT_WORDS });
+                    socket.emit('create-game');
                     // Después de crear, automáticamente unirse
                     setTimeout(() => {
                         socket.emit('join-game', {
